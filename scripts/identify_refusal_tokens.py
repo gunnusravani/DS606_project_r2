@@ -5,8 +5,39 @@ Refusal tokens are the first tokens that appear when the model refuses a harmful
 
 import torch
 import json
+import os
+from pathlib import Path
 from transformers import AutoTokenizer, AutoModelForCausalLM
+from huggingface_hub import login
 from typing import Dict, List
+
+# Load environment variables from .env file
+try:
+    from dotenv import load_dotenv
+    # Try to load .env from current directory and parent directories
+    env_path = Path('.env')
+    if not env_path.exists():
+        env_path = Path(__file__).parent.parent / '.env'
+    if not env_path.exists():
+        env_path = Path.home() / '.env'
+    
+    if env_path.exists():
+        load_dotenv(env_path)
+        print(f"✅ Loaded .env from: {env_path}")
+    else:
+        print("⚠️  .env file not found, using environment variables")
+except ImportError:
+    print("⚠️  python-dotenv not installed, skipping .env loading")
+
+# Load HF_TOKEN from environment
+hf_token = os.getenv('HF_TOKEN')
+if hf_token:
+    login(token=hf_token)
+    print(f"✅ Authenticated with HuggingFace using HF_TOKEN from environment")
+else:
+    print("⚠️  HF_TOKEN not found in environment. Will attempt to use cached models or prompt for login.")
+    print("   If you get authentication errors, please set HF_TOKEN in your .env file or export it:")
+    print("   export HF_TOKEN='your_token_here'")
 
 def format_instruction_qwen_chat(instruction: str, system: str = None) -> str:
     """Format instruction in Qwen chat template format."""
@@ -92,13 +123,19 @@ def identify_refusal_tokens(model_path: str, harmful_prompts_file: str, lang_cod
     return unique_first_tokens.tolist()
 
 if __name__ == "__main__":
+    import sys
+    import os
+    
+    # Get the base directory
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    
     # Example usage for Hindi
     print("=" * 80)
     print("Identifying refusal tokens for Hindi (hi)")
     print("=" * 80)
     hi_tokens = identify_refusal_tokens(
         model_path="Qwen/Qwen2.5-7B-Instruct",
-        harmful_prompts_file="/Users/sravani/Documents/VSCode_projects/Multilingual-Refusal/dataset/splits_multi/harmful_train_translated_hi.json",
+        harmful_prompts_file=os.path.join(BASE_DIR, "dataset/splits_multi/harmful_train_translated_hi.json"),
         lang_code="hi"
     )
     print(f"\nRecommended Hindi refusal tokens: {hi_tokens}")
@@ -108,7 +145,7 @@ if __name__ == "__main__":
     print("=" * 80)
     bn_tokens = identify_refusal_tokens(
         model_path="Qwen/Qwen2.5-7B-Instruct",
-        harmful_prompts_file="/Users/sravani/Documents/VSCode_projects/Multilingual-Refusal/dataset/splits_multi/harmful_train_translated_bn.json",
+        harmful_prompts_file=os.path.join(BASE_DIR, "dataset/splits_multi/harmful_train_translated_bn.json"),
         lang_code="bn"
     )
     print(f"\nRecommended Bengali refusal tokens: {bn_tokens}")
