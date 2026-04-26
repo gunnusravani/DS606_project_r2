@@ -50,3 +50,5 @@ huggingface_cache/
 venv/
 .venv/
 >>>>>>> Stashed changes
+ssh_key
+ssh_key.pub
