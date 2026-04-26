@@ -76,7 +76,34 @@ def identify_refusal_tokens(model_path: str, harmful_prompts_file: str, lang_cod
         List of token IDs that represent refusals in the target language
     """
     print(f"Loading model {model_path}...")
-    model = AutoModelForCausalLM.from_pretrained(model_path, torch_dtype=torch.float16, device_map=device)
+    
+    # Try CUDA first, fall back to CPU if CUDA error occurs
+    try:
+        if device == "cuda":
+            model = AutoModelForCausalLM.from_pretrained(
+                model_path, 
+                torch_dtype=torch.float16, 
+                device_map="cuda"
+            )
+        else:
+            model = AutoModelForCausalLM.from_pretrained(
+                model_path,
+                torch_dtype=torch.float32,
+                device_map="cpu"
+            )
+    except RuntimeError as e:
+        if "CUDA" in str(e):
+            print(f"⚠️  CUDA error detected: {e}")
+            print("🔄 Falling back to CPU...")
+            device = "cpu"
+            model = AutoModelForCausalLM.from_pretrained(
+                model_path,
+                torch_dtype=torch.float32,
+                device_map="cpu"
+            )
+        else:
+            raise
+    
     tokenizer = AutoTokenizer.from_pretrained(model_path)
     
     print(f"Loading harmful prompts from {harmful_prompts_file}...")
@@ -92,12 +119,28 @@ def identify_refusal_tokens(model_path: str, harmful_prompts_file: str, lang_cod
     
     print("Generating responses...")
     with torch.no_grad():
-        generation_toks = model.generate(
-            input_ids=tokenized.input_ids.to(model.device),
-            attention_mask=tokenized.attention_mask.to(model.device),
-            max_new_tokens=20,
-            do_sample=False,
-        )
+        try:
+            generation_toks = model.generate(
+                input_ids=tokenized.input_ids.to(model.device),
+                attention_mask=tokenized.attention_mask.to(model.device),
+                max_new_tokens=20,
+                do_sample=False,
+                pad_token_id=tokenizer.pad_token_id or tokenizer.eos_token_id,
+            )
+        except RuntimeError as e:
+            if "CUDA" in str(e):
+                print(f"⚠️  CUDA error during generation: {e}")
+                print("🔄 Switching to CPU and retrying...")
+                model = model.to("cpu")
+                generation_toks = model.generate(
+                    input_ids=tokenized.input_ids.to("cpu"),
+                    attention_mask=tokenized.attention_mask.to("cpu"),
+                    max_new_tokens=20,
+                    do_sample=False,
+                    pad_token_id=tokenizer.pad_token_id or tokenizer.eos_token_id,
+                )
+            else:
+                raise
     
     # Extract first tokens (after input)
     input_len = tokenized.input_ids.shape[-1]
