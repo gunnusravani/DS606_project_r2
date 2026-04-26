@@ -99,7 +99,7 @@ def identify_refusal_tokens(model_path: str, harmful_prompts_file: str, lang_cod
         data = json.load(f)
     
     # Extract instructions
-    harmful_instructions = [d['instruction'] for d in data[:5]]  # Sample first 5
+    harmful_instructions = [d['instruction'] for d in data[:100]]  # Sample first 100
     print(f"Loaded {len(harmful_instructions)} harmful prompts")
     
     # Tokenize and generate
@@ -166,3 +166,27 @@ if __name__ == "__main__":
         lang_code="bn"
     )
     print(f"\nRecommended Bengali refusal tokens: {bn_tokens}")
+    
+    # Save tokens to file for later use
+    tokens_data = {
+        'hi': hi_tokens,
+        'bn': bn_tokens,
+        'timestamp': str(Path.cwd()),
+        'note': 'These tokens are used in the pipeline to identify refusal positions'
+    }
+    
+    tokens_file = os.path.join(BASE_DIR, "config/refusal_tokens_hi_bn.json")
+    os.makedirs(os.path.dirname(tokens_file), exist_ok=True)
+    
+    with open(tokens_file, 'w', encoding='utf-8') as f:
+        json.dump(tokens_data, f, indent=2, ensure_ascii=False)
+    
+    print(f"\n{'='*80}")
+    print(f"✅ Refusal tokens saved to: {tokens_file}")
+    print(f"{'='*80}")
+    print(f"\n📝 Summary:")
+    print(f"   Hindi tokens:    {hi_tokens}")
+    print(f"   Bengali tokens:  {bn_tokens}")
+    print(f"\n📌 Next step:")
+    print(f"   Update model files:")
+    print(f"   python scripts/update_refusal_tokens.py --hi \"{','.join(map(str, hi_tokens))}\" --bn \"{','.join(map(str, bn_tokens))}\"")
