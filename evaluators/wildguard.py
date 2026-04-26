@@ -134,7 +134,8 @@ Answers: [/INST]
         for data in tqdm(completions):#, total=len(data_loader), enrich_print=False, disable=not verbose):
 
             prompt = data["instruction_en"] 
-            response = data["response"] if cfg.lang == 'en' else data["response_translated"]
+            # Use response field directly - it's already in target language
+            response = data.get("response", data.get("response_translated", ""))
             model_input = self.instruction_format.format(prompt=prompt, response=response)
 
             tokenized_input = self.tokenizer_guard([model_input], return_tensors='pt', add_special_tokens=False).to("cuda")
