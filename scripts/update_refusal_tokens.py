@@ -2,7 +2,10 @@
 """
 Helper script to update all model files with Hindi and Bengali refusal tokens.
 
-Usage:
+Usage (Option 1 - Auto-load from file):
+    python scripts/update_refusal_tokens.py
+    
+Usage (Option 2 - Manual override):
     python scripts/update_refusal_tokens.py --hi [HINDI_TOKEN_IDS] --bn [BENGALI_TOKEN_IDS]
     
 Example:
@@ -11,12 +14,42 @@ Example:
 
 import argparse
 import re
+import json
 from pathlib import Path
-from typing import List
+from typing import List, Tuple
 
 def parse_tokens(token_str: str) -> List[int]:
     """Parse comma-separated token IDs."""
     return [int(t.strip()) for t in token_str.split(',')]
+
+def load_tokens_from_file(config_dir: Path = None) -> Tuple[List[int], List[int], bool]:
+    """
+    Load refusal tokens from the saved JSON file.
+    
+    Returns:
+        (hi_tokens, bn_tokens, success)
+    """
+    if config_dir is None:
+        config_dir = Path(__file__).parent.parent / 'config'
+    
+    tokens_file = config_dir / 'refusal_tokens_hi_bn.json'
+    
+    if tokens_file.exists():
+        try:
+            with open(tokens_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            hi_tokens = data.get('hi', [])
+            bn_tokens = data.get('bn', [])
+            
+            if hi_tokens and bn_tokens:
+                print(f"✅ Loaded tokens from: {tokens_file}")
+                print(f"   Hindi tokens: {hi_tokens}")
+                print(f"   Bengali tokens: {bn_tokens}\n")
+                return hi_tokens, bn_tokens, True
+        except Exception as e:
+            print(f"⚠️  Error reading {tokens_file}: {e}")
+    
+    return [], [], False
 
 def update_model_file(filepath: Path, hi_tokens: List[int], bn_tokens: List[int]) -> bool:
     """Update a model file with Hindi and Bengali refusal tokens."""
@@ -69,23 +102,41 @@ def main():
     parser.add_argument(
         '--hi',
         type=str,
-        required=True,
-        help='Hindi refusal token IDs (comma-separated, e.g., "127748,128976")'
+        default=None,
+        help='Hindi refusal token IDs (comma-separated, e.g., "127748,128976"). If not provided, loads from config/refusal_tokens_hi_bn.json'
     )
     parser.add_argument(
         '--bn',
         type=str,
-        required=True,
-        help='Bengali refusal token IDs (comma-separated, e.g., "12345,67890")'
+        default=None,
+        help='Bengali refusal token IDs (comma-separated, e.g., "12345,67890"). If not provided, loads from config/refusal_tokens_hi_bn.json'
     )
     
     args = parser.parse_args()
     
-    # Parse tokens
-    hi_tokens = parse_tokens(args.hi)
-    bn_tokens = parse_tokens(args.bn)
+    # Try to load from file first
+    hi_tokens = None
+    bn_tokens = None
     
-    print(f"Updating models with:")
+    if args.hi is None or args.bn is None:
+        print("🔍 Attempting to load tokens from config/refusal_tokens_hi_bn.json...\n")
+        hi_tokens, bn_tokens, success = load_tokens_from_file()
+        
+        if not success:
+            print("❌ Could not load tokens from file. Please provide tokens manually:")
+            print("   python scripts/update_refusal_tokens.py --hi [IDS] --bn [IDS]")
+            return
+    
+    # Use command-line arguments if provided (override file)
+    if args.hi is not None:
+        hi_tokens = parse_tokens(args.hi)
+        print(f"Using Hindi tokens from command line: {hi_tokens}")
+    
+    if args.bn is not None:
+        bn_tokens = parse_tokens(args.bn)
+        print(f"Using Bengali tokens from command line: {bn_tokens}")
+    
+    print(f"\nUpdating models with:")
     print(f"  Hindi tokens: {hi_tokens}")
     print(f"  Bengali tokens: {bn_tokens}")
     print()
@@ -109,9 +160,15 @@ def main():
         print("\n✅ All model files updated successfully!")
         print("\nNext steps:")
         print("1. Verify the changes: git diff pipeline/model_utils/")
-        print("2. Run the pipeline: python -m pipeline.run_pipeline --config pipeline/runs/Qwen2.5-7B-Instruct/hi/hi.yaml")
+        print("2. Run the pipeline for Hindi:")
+        print("   python -m pipeline.run_pipeline --config pipeline/runs/Qwen2.5-7B-Instruct/hi/hi.yaml")
+        print("3. Run the pipeline for Bengali:")
+        print("   python -m pipeline.run_pipeline --config pipeline/runs/Qwen2.5-7B-Instruct/bn/bn.yaml")
     else:
-        print("\n⚠️  No files were updated. Check your token format.")
+        print("\n⚠️  No files were updated. Check your token format or file path.")
+
+if __name__ == "__main__":
+    main()
 
 if __name__ == "__main__":
     main()
