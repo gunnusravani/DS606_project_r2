@@ -14,3 +14,34 @@ __pycache__/
 .vscode/
 *.bak
 *.orig
+
+# Pipeline outputs - selective ignore (keep analysis results, ignore intermediate files)
+output/**/*.log                          # Ignore logs
+output/**/output.log
+output/**/error.log
+output/**/config_run.yaml                # Ignore config copy
+output/**/*_completions.json             # Ignore raw completions (can regenerate)
+output/**/generate_directions/           # Ignore intermediate generation
+output/**/select_direction/              # Ignore intermediate selection
+
+# But DO commit these results files:
+!output/**/direction_metadata_*.json     # Layer/position metadata (needed!)
+!output/**/direction_*.pt                # Refusal vectors (needed for analysis!)
+!output/**/completions/*_evaluations.json # Jailbreak scores (needed!)
+!output/**/lm_eval_results/              # Benchmark results (needed!)
+
+# Model cache and large files
+*.pt
+*.pth
+*.bin
+models/
+cache/
+*_cache/
+huggingface_cache/
+.cache/
+
+# Large data files
+*.pkl
+*.pickle
+*.h5
+*.hdf5
