@@ -14,6 +14,7 @@ __pycache__/
 .vscode/
 *.bak
 *.orig
+<<<<<<< Updated upstream
 
 # Pipeline outputs - selective ignore (keep analysis results, ignore intermediate files)
 output/**/*.log                          # Ignore logs
@@ -45,3 +46,7 @@ huggingface_cache/
 *.pickle
 *.h5
 *.hdf5
+=======
+venv/
+.venv/
+>>>>>>> Stashed changes
