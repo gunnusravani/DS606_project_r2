@@ -16,4 +16,4 @@ source /users/student/prjstu/sravani.gunnu/miniconda3/etc/profile.d/conda.sh
 
 conda activate ds606
 
-python -m pipeline.run_pipeline --config pipeline/runs/Qwen2.5-7B-Instruct/hi/hi.yaml
+python -m pipeline.run_pipeline --config pipeline/runs/Qwen2.5-7B-Instruct/bn/bn.yaml
