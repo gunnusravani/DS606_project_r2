@@ -1,0 +1,6 @@
+Metric,Hindi,Bengali
+Best Layer,16.0,16.0
+Best Position,-1.0,-4.0
+Refusal Score,-0.2798,-0.1908
+Steering Score,-1.236,-0.5726
+KL Divergence,0.1434,0.1543
