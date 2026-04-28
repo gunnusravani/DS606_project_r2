@@ -11,7 +11,7 @@
 #SBATCH --output=logs/%x_%j.out
 #SBATCH --error=logs/%x_%j.err
 
-set -e  # Exit on first error
+set -e
 
 # Activate conda environment
 source /users/student/prjstu/sravani.gunnu/miniconda3/etc/profile.d/conda.sh
@@ -20,58 +20,47 @@ conda activate ds606
 # Navigate to project directory
 cd /users/student/prjstu/sravani.gunnu/DS606_project_r2
 
-# Set Python path to ensure imports work
+# Set Python path
 export PYTHONPATH=/users/student/prjstu/sravani.gunnu/DS606_project_r2:$PYTHONPATH
 
-# Create logs directory if it doesn't exist
 mkdir -p logs
 
 echo "=========================================="
-echo "Starting Llama Guard 4 Evaluation Pipeline"
+echo "Starting Llama Guard 4 Evaluation"
 echo "=========================================="
 echo "Time: $(date)"
-echo "GPU Check:"
-nvidia-smi --query-gpu=name,memory.total --format=csv
 echo ""
 
-# Check if Llama Guard 4 dependencies are installed
-echo "Checking Llama Guard 4 dependencies..."
-python -c "from transformers import AutoProcessor, AutoModelForCausalLM; print('✓ Transformers available')" 2>/dev/null || {
-    echo "Installing Llama Guard 4 dependencies..."
-    pip install --no-cache-dir git+https://github.com/huggingface/transformers@v4.51.3-LlamaGuard-preview
+# Check PyTorch version
+echo "Checking PyTorch and dependencies..."
+python -c "import torch; print(f'PyTorch: {torch.__version__}'); print(f'CUDA: {torch.cuda.is_available()}')" || {
+    echo "PyTorch issue detected, attempting fix..."
+    pip install --upgrade torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
 }
 
-# Run the re-evaluation
+# Install/update transformers with Llama Guard support
+echo "Installing Llama Guard 4 transformers..."
+pip install --upgrade git+https://github.com/huggingface/transformers@v4.51.3-LlamaGuard-preview --no-deps
+
+# Run simple evaluation
 echo ""
 echo "=========================================="
-echo "Starting Llama Guard 4 re-evaluation..."
+echo "Running Llama Guard 4 evaluation..."
 echo "=========================================="
-python scripts/re_evaluate_with_llama_guard_4.py
+python scripts/simple_llama_guard_4_eval.py
 
 if [ $? -eq 0 ]; then
-    echo "✓ Llama Guard 4 re-evaluation completed successfully!"
+    echo ""
+    echo "✓ Evaluation completed successfully!"
 else
-    echo "✗ Llama Guard 4 re-evaluation FAILED!"
-    exit 1
-fi
-
-# Optional: Run comparison analysis after evaluation completes
-echo ""
-echo "=========================================="
-echo "Generating comparison analysis..."
-echo "=========================================="
-python scripts/compare_evaluation_methods.py
-
-if [ $? -eq 0 ]; then
-    echo "✓ Comparison analysis completed successfully!"
-else
-    echo "✗ Comparison analysis FAILED!"
+    echo ""
+    echo "✗ Evaluation FAILED!"
     exit 1
 fi
 
 echo ""
 echo "=========================================="
-echo "All evaluations completed successfully!"
-echo "Time: $(date)"
+echo "Completed at: $(date)"
 echo "=========================================="
+
 
