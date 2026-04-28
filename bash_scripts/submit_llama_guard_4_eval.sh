@@ -26,21 +26,12 @@ export PYTHONPATH=/users/student/prjstu/sravani.gunnu/DS606_project_r2:$PYTHONPA
 mkdir -p logs
 
 echo "=========================================="
-echo "Starting Llama Guard 4 Evaluation"
+echo "Llama Guard 4 Evaluation (Text Only)"
 echo "=========================================="
 echo "Time: $(date)"
 echo ""
 
-# Fix PyTorch-Transformers compatibility
-echo "Fixing PyTorch and Transformers compatibility..."
-pip install --upgrade torch>=2.4.0 --index-url https://download.pytorch.org/whl/cu118
-pip install --upgrade transformers>=4.45.0 safetensors
-
-echo "✓ Dependencies updated"
-
-# Run simple evaluation
-echo ""
-echo "=========================================="
+# Run simple evaluation (no setup, environment ready)
 echo "Running Llama Guard 4 evaluation..."
 echo "=========================================="
 python scripts/simple_llama_guard_4_eval.py
