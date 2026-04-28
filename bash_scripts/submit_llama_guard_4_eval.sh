@@ -31,7 +31,11 @@ echo "=========================================="
 echo "Time: $(date)"
 echo ""
 
-# Run simple evaluation (no setup, environment ready)
+# Ensure transformers is available (force reinstall if corrupted)
+echo "Ensuring clean transformers installation..."
+pip install --force-reinstall --no-cache-dir transformers>=4.40.0 torch>=2.0.0 2>&1 | grep -E "(Successfully|Requirement|ERROR|error)" || true
+
+echo ""
 echo "Running Llama Guard 4 evaluation..."
 echo "=========================================="
 python scripts/simple_llama_guard_4_eval.py
