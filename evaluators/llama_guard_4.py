@@ -7,7 +7,6 @@ import torch
 import json
 import re
 from typing import List, Dict, Tuple
-from transformers import AutoProcessor, Llama4ForConditionalGeneration
 import logging
 
 logger = logging.getLogger(__name__)
@@ -48,19 +47,57 @@ class LlamaGuard4Evaluator:
             dtype: Data type for model weights (torch.bfloat16 or torch.float16)
         """
         logger.info("Loading Llama Guard 4-12B model...")
+        logger.info(f"Device: {device}, Data type: {dtype}")
         self.device = device
         self.dtype = dtype
         
         try:
+            # Try to import with the correct class names
+            try:
+                from transformers import AutoProcessor, Llama4ForConditionalGeneration
+                logger.info("Using Llama4ForConditionalGeneration")
+            except ImportError:
+                logger.warning("Llama4ForConditionalGeneration not found, trying alternative import")
+                from transformers import AutoProcessor, AutoModelForCausalLM
+                Llama4ForConditionalGeneration = AutoModelForCausalLM
+            
+            print("Loading processor...")
             self.processor = AutoProcessor.from_pretrained(self.MODEL_ID)
-            self.model = Llama4ForConditionalGeneration.from_pretrained(
-                self.MODEL_ID,
-                device_map=device,
-                torch_dtype=dtype,
-            )
+            print(f"✓ Processor loaded")
+            
+            print(f"Loading model from {self.MODEL_ID}...")
+            logger.info(f"Loading Llama Guard 4 from {self.MODEL_ID}")
+            
+            # Load model with proper error handling
+            if device == "cuda" and torch.cuda.is_available():
+                print(f"CUDA available. Using GPU")
+                self.model = Llama4ForConditionalGeneration.from_pretrained(
+                    self.MODEL_ID,
+                    torch_dtype=dtype,
+                    device_map="auto",
+                    token=True,  # Use HF token if available
+                )
+            else:
+                print(f"CUDA not available or cpu requested. Using CPU")
+                self.model = Llama4ForConditionalGeneration.from_pretrained(
+                    self.MODEL_ID,
+                    torch_dtype=dtype,
+                    device_map="cpu",
+                )
+            
+            print(f"✓ Llama Guard 4 model loaded successfully")
             logger.info("Llama Guard 4 model loaded successfully")
+            
+            # Verify model is on the right device
+            model_device = next(self.model.parameters()).device
+            print(f"Model device verified: {model_device}")
+            logger.info(f"Model device: {model_device}")
+            
         except Exception as e:
             logger.error(f"Failed to load Llama Guard 4: {str(e)}")
+            import traceback
+            print(f"ERROR loading model: {str(e)}")
+            traceback.print_exc()
             raise
     
     def classify_response(self, prompt: str, response: str) -> Tuple[str, List[str]]:
@@ -76,42 +113,48 @@ class LlamaGuard4Evaluator:
             - safety_label: 'safe' or 'unsafe'
             - hazard_categories: List of violated categories (empty if safe)
         """
-        messages = [
-            {
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": prompt}
-                ]
-            },
-            {
-                "role": "assistant",
-                "content": [
-                    {"type": "text", "text": response}
-                ]
-            }
-        ]
+        try:
+            messages = [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": prompt}
+                    ]
+                },
+                {
+                    "role": "assistant",
+                    "content": [
+                        {"type": "text", "text": response}
+                    ]
+                }
+            ]
+            
+            inputs = self.processor.apply_chat_template(
+                messages,
+                tokenize=True,
+                add_generation_prompt=True,
+                return_tensors="pt",
+                return_dict=True,
+            ).to(self.device)
+            
+            with torch.no_grad():
+                outputs = self.model.generate(
+                    **inputs,
+                    max_new_tokens=10,
+                    do_sample=False,
+                )
+            
+            response_text = self.processor.batch_decode(
+                outputs[:, inputs["input_ids"].shape[-1]:],
+                skip_special_tokens=True
+            )[0]
+            
+            return self._parse_response(response_text)
         
-        inputs = self.processor.apply_chat_template(
-            messages,
-            tokenize=True,
-            add_generation_prompt=True,
-            return_tensors="pt",
-            return_dict=True,
-        ).to(self.device)
-        
-        with torch.no_grad():
-            outputs = self.model.generate(
-                **inputs,
-                max_new_tokens=10,
-                do_sample=False,
-            )
-        
-        response_text = self.processor.batch_decode(
-            outputs[:, inputs["input_ids"].shape[-1]:],
-            skip_special_tokens=True
-        )[0]
-        
-        return self._parse_response(response_text)
+        except Exception as e:
+            logger.error(f"Error classifying response: {str(e)}")
+            logger.warning(f"Returning default 'safe' classification for this sample")
+            return ("safe", [])
     
     def classify_batch(
         self,

@@ -41,16 +41,32 @@ class AblationReevaluator:
         results_dir = self.base_path / f"{lang}/{timestamp}/1/completions"
         completions_file = results_dir / "harmful_harm_ablation_evaluations.json"
         
-        logger.info(f"Loading completions from {completions_file}")
+        logger.info(f"Looking for completions file: {completions_file}")
+        print(f"Looking for completions file: {completions_file}")
         
         if not completions_file.exists():
             raise FileNotFoundError(f"Completions file not found: {completions_file}")
         
+        print(f"✓ File found, loading completions...")
+        
         with open(completions_file, 'r') as f:
             data = json.load(f)
         
+        print(f"✓ JSON loaded. Available keys: {list(data.keys())}")
+        
         completions = data.get("completions", [])
+        
+        if not completions:
+            print(f"WARNING: No completions found in JSON. Full data structure: {type(data)}")
+            # If no "completions" key, the entire data might be the completions list
+            if isinstance(data, list):
+                completions = data
+                print(f"Using entire data as completions list")
+            else:
+                raise ValueError(f"Could not find completions in JSON. Keys: {list(data.keys())}")
+        
         logger.info(f"Loaded {len(completions)} completions for {lang.upper()}")
+        print(f"✓ Loaded {len(completions)} completions for {lang.upper()}")
         
         return completions, results_dir
     
@@ -68,21 +84,30 @@ class AblationReevaluator:
         logger.info(f"\n{'='*70}")
         logger.info(f"Re-evaluating {lang.upper()} with Llama Guard 4")
         logger.info(f"{'='*70}")
+        print(f"\n{'='*70}")
+        print(f"Re-evaluating {lang.upper()} with Llama Guard 4")
+        print(f"{'='*70}")
         
         # Load completions
         completions, results_dir = self.load_ablation_completions(lang, timestamp)
+        print(f"✓ Loaded {len(completions)} completions")
         
         # Determine which response field to use
         use_field = "response_translated" if lang != "en" else "response"
+        print(f"Using response field: {use_field}")
         
         # Evaluate with Llama Guard 4
+        print(f"\nStarting Llama Guard 4 evaluation...")
         evaluation = self.evaluator.evaluate_completions(completions, use_field=use_field)
+        print(f"✓ Evaluation completed")
         
         # Print summary
         logger.info(self.evaluator.get_summary_stats(evaluation))
+        print(self.evaluator.get_summary_stats(evaluation))
         
         # Save new evaluation
         output_file = results_dir / f"harmful_harm_ablation_llama_guard_4_evaluation.json"
+        print(f"\nSaving evaluation to {output_file}...")
         with open(output_file, 'w') as f:
             # Only save relevant fields, not the full completions
             summary = {
@@ -95,9 +120,11 @@ class AblationReevaluator:
             json.dump(summary, f, indent=4)
         
         logger.info(f"Saved Llama Guard 4 evaluation to {output_file}")
+        print(f"✓ Evaluation summary saved")
         
         # Also save per-sample classifications
         per_sample_file = results_dir / f"harmful_harm_ablation_llama_guard_4_per_sample.json"
+        print(f"Saving per-sample classifications to {per_sample_file}...")
         per_sample_classifications = []
         
         for i, completion in enumerate(evaluation['completions']):
@@ -115,6 +142,7 @@ class AblationReevaluator:
             json.dump(per_sample_classifications, f, indent=4)
         
         logger.info(f"Saved per-sample classifications to {per_sample_file}")
+        print(f"✓ Per-sample classifications saved")
         
         return evaluation
     
@@ -160,7 +188,15 @@ class AblationReevaluator:
 
 def main():
     """Main execution."""
-    re_evaluator = AblationReevaluator()
+    try:
+        print("Initializing Llama Guard 4 evaluator...")
+        re_evaluator = AblationReevaluator()
+        print("✓ Evaluator initialized successfully")
+    except Exception as e:
+        logger.error(f"CRITICAL: Failed to initialize evaluator: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise
     
     # Re-evaluate both languages
     languages = ['hi', 'bn']
@@ -168,11 +204,20 @@ def main():
     
     for lang in languages:
         try:
-            logger.info(f"\nProcessing {lang.upper()}...")
+            print(f"\n{'='*70}")
+            print(f"Processing {lang.upper()}...")
+            print(f"{'='*70}")
             comparison, evaluation = re_evaluator.compare_evaluation_methods(lang)
             results[lang] = (comparison, evaluation)
+            print(f"✓ {lang.upper()} completed successfully")
+        except FileNotFoundError as e:
+            logger.error(f"File not found for {lang}: {str(e)}")
+            print(f"✗ {lang.upper()} - File not found: {str(e)}")
+            raise
         except Exception as e:
             logger.error(f"Error processing {lang}: {str(e)}")
+            import traceback
+            traceback.print_exc()
             raise
     
     # Create comparison table
