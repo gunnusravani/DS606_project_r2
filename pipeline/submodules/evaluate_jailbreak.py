@@ -11,6 +11,7 @@ import torch
 import litellm
 import time
 from evaluators.wildguard import WildGuardEvaluator
+from evaluators.llama_guard_4 import LlamaGuard4Evaluator
 from torch.utils.data import DataLoader
 
 # based on https://github.com/JailbreakBench/jailbreakbench/blob/4dbcc097739dd684fbf789cc3d4f97372bd72851/src/jailbreakbench/classifier.py
@@ -263,6 +264,40 @@ def evaluate_jailbreak(
         evaluation['wildguard_refusal'] = np.mean([completion['wildguard']['refusal'] for completion in completions])
         evaluation['wildguard_compliance'] = 1 - evaluation['wildguard_refusal']
         print(f"Average WildGuard harmful ASR: {evaluation['wildguard_harmful']}")
+    
+    if "llama_guard_4" in methodologies:
+        print("Evaluating with Llama Guard 4...")
+        
+        lg4_evaluator = LlamaGuard4Evaluator()
+        
+        # Determine which response field to use
+        use_field = "response_translated" if translation else "response"
+        
+        # Evaluate completions
+        lg4_evaluation = lg4_evaluator.evaluate_completions(completions, use_field=use_field)
+        
+        # Update completions with per-sample results
+        completions = lg4_evaluation['completions']
+        
+        # Store results
+        evaluation['llama_guard_4_unsafe_rate'] = lg4_evaluation['llama_guard_4_unsafe_rate']
+        evaluation['llama_guard_4_safe_rate'] = lg4_evaluation['llama_guard_4_safe_rate']
+        evaluation['llama_guard_4_error_rate'] = lg4_evaluation['llama_guard_4_error_rate']
+        evaluation['llama_guard_4_hazard_distribution'] = lg4_evaluation['llama_guard_4_hazard_distribution']
+        
+        # Per-category statistics
+        category_to_asr = {}
+        for category in sorted(list(set(categories))):
+            category_completions = [completion for completion in completions if completion["category"] == category]
+            if category_completions:
+                category_unsafe_rate = np.mean([completion['llama_guard_4']['is_unsafe'] for completion in category_completions])
+                category_to_asr[category] = category_unsafe_rate
+        
+        evaluation['llama_guard_4_per_category'] = category_to_asr
+        
+        print(f"Average Llama Guard 4 Unsafe Rate: {evaluation['llama_guard_4_unsafe_rate']:.2%}")
+        print(f"Llama Guard 4 Safe Rate: {evaluation['llama_guard_4_safe_rate']:.2%}")
+    
     if "harmbench" in methodologies: 
 
         classifications: List[int] = harmbench_judge_fn(prompts, responses)
