@@ -31,16 +31,12 @@ echo "=========================================="
 echo "Time: $(date)"
 echo ""
 
-# Check PyTorch version
-echo "Checking PyTorch and dependencies..."
-python -c "import torch; print(f'PyTorch: {torch.__version__}'); print(f'CUDA: {torch.cuda.is_available()}')" || {
-    echo "PyTorch issue detected, attempting fix..."
-    pip install --upgrade torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
-}
+# Fix PyTorch-Transformers compatibility
+echo "Fixing PyTorch and Transformers compatibility..."
+pip install --upgrade torch>=2.4.0 --index-url https://download.pytorch.org/whl/cu118
+pip install --upgrade transformers>=4.45.0 safetensors
 
-# Install/update transformers with Llama Guard support
-echo "Installing Llama Guard 4 transformers..."
-pip install --upgrade git+https://github.com/huggingface/transformers@v4.51.3-LlamaGuard-preview --no-deps
+echo "✓ Dependencies updated"
 
 # Run simple evaluation
 echo ""
@@ -62,5 +58,6 @@ echo ""
 echo "=========================================="
 echo "Completed at: $(date)"
 echo "=========================================="
+
 
 
