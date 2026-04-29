@@ -343,11 +343,12 @@ Response only with 'SAFE' or 'UNSAFE'."""
             'asr': wildguard_asr,
         }
         print(f"  WildGuard ASR: {wildguard_asr:.2f}% ({wildguard_unsafe}/{len(responses_data)})")
-        print(f"\n  {"="*60}")
+        print("\n  " + "="*60)
         print(f"  Comparison - {lang.upper()}:")
         print(f"    Gemma-3-27B ASR: {gemma3_asr:.2f}%")
         print(f"    WildGuard ASR:   {wildguard_asr:.2f}%")
         print(f"    Difference:      {abs(gemma3_asr - wildguard_asr):.2f}pp")
+        print("  " + "="*60)
         print(f"  {"="*60}")
 
 # Save results
