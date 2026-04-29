@@ -349,7 +349,6 @@ Response only with 'SAFE' or 'UNSAFE'."""
         print(f"    WildGuard ASR:   {wildguard_asr:.2f}%")
         print(f"    Difference:      {abs(gemma3_asr - wildguard_asr):.2f}pp")
         print("  " + "="*60)
-        print(f"  {"="*60}")
 
 # Save results
 output_file = Path("output/asr_comprehensive_evaluation.json")
