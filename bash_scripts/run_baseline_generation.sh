@@ -17,6 +17,10 @@ set -e  # Exit on any error
 eval "$(/users/student/prjstu/sravani.gunnu/miniconda3/bin/conda shell.bash hook)"
 conda activate ds606
 
+# Ensure required packages are installed
+echo "Verifying required packages..."
+pip install --upgrade accelerate>=0.28.0 transformers>=4.40.0 torch>=2.0.0 2>&1 | tail -5
+
 # Set Python path
 export PYTHONPATH=/users/student/prjstu/sravani.gunnu/DS606_project_r2:$PYTHONPATH
 

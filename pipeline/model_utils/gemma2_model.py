@@ -101,7 +101,7 @@ class Gemma2Model(ModelBase):
     def _load_model(self, model_path, dtype=torch.bfloat16):
         model = AutoModelForCausalLM.from_pretrained(
             model_path,
-            torch_dtype=dtype,
+            dtype=dtype,
             device_map="cuda",
             attn_implementation="eager",
         ).eval()
