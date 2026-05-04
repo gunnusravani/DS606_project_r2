@@ -122,7 +122,6 @@ def generate_completions_vllm(
         gpu_memory_utilization=0.90,
         trust_remote_code=True,
         tensor_parallel_size=tensor_parallel_size,
-        local_files_only=True,
     )
     
     load_time = time.time() - load_start
