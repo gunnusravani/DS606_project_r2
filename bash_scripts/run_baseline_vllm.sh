@@ -18,9 +18,9 @@ eval "$(/users/student/prjstu/sravani.gunnu/miniconda3/bin/conda shell.bash hook
 conda activate ds606
 
 # Install vLLM (fast, optimized generation framework)
-echo "Installing vLLM for efficient generation..."
-pip install --quiet vllm>=0.4.0 2>&1 | tail -3
-echo "✓ vLLM installed"
+# echo "Installing vLLM for efficient generation..."
+# pip install --quiet vllm>=0.4.0 2>&1 | tail -3
+# echo "✓ vLLM installed"
 
 # Set Python path
 export PYTHONPATH=/users/student/prjstu/sravani.gunnu/DS606_project_r2:$PYTHONPATH

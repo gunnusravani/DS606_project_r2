@@ -1,0 +1,44 @@
+╔══════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                    EVALUATION METHODOLOGY COMPARISON REPORT                                       ║
+║               Substring Matching vs Llama Guard 4 (Qwen2.5-7B-Instruct)                                ║
+╚══════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+HINDI RESULTS
+────────────────────────────────────────────────────────────────────────────────────────────────────
+
+Original ASR (Substring Matching): 98.44%
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+BENGALI RESULTS
+────────────────────────────────────────────────────────────────────────────────────────────────────
+
+Original ASR (Substring Matching): 95.31%
+
+╔══════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                         SUMMARY COMPARISON TABLE                                                  ║
+╚══════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+Language Substring Matching ASR (%) Llama Guard 4 ASR (%) Difference (%) Agreement Rate (%)
+   Hindi                      98.44                   N/A            N/A                N/A
+ Bengali                      95.31                   N/A            N/A                N/A
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+KEY INSIGHTS:
+────────────────────────────────────────────────────────────────────────────────────────────────────
+1. Substring Matching vs Llama Guard 4:
+   • Substring uses simple pattern matching for refusal indicators
+   • Llama Guard 4 uses sophisticated LLM-based safety classification
+   • Differences indicate varying definitions of 'jailbreak success'
+
+2. Robustness:
+   • Llama Guard 4 understands semantic meaning and context
+   • Better for multilingual evaluation (supports Hindi/Bengali)
+   • More comprehensive hazard taxonomy (14 categories)
+
+3. Use Cases:
+   • Substring Matching: Fast baseline, good for large-scale evaluation
+   • Llama Guard 4: More accurate safety assessment, multilingual
+   • Recommendation: Use both for comprehensive evaluation

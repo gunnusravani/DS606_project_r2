@@ -35,13 +35,14 @@ try:
 except ImportError:
     print("⚠️  python-dotenv not installed, skipping .env loading")
 
-# Load HF_TOKEN from environment
-hf_token = os.getenv('HF_TOKEN')
-if hf_token:
-    login(token=hf_token)
-    print(f"✅ Authenticated with HuggingFace using HF_TOKEN from environment")
-else:
-    print("⚠️  HF_TOKEN not found in environment.")
+# # Load HF_TOKEN from environment
+# hf_token = os.getenv('HF_TOKEN')
+# print(hf_token)
+# if hf_token:
+#     login(token=hf_token)
+#     print(f"✅ Authenticated with HuggingFace using HF_TOKEN from environment")
+# else:
+#     print("⚠️  HF_TOKEN not found in environment.")
 
 # Model configurations
 MODELS = {
@@ -112,7 +113,7 @@ def identify_refusal_tokens_for_model(
             model_path,
             torch_dtype=torch.bfloat16,
             device_map="auto",
-            local_files_only=True,
+            # local_files_only=True,
         )
         print(f"✅ Model loaded on GPU: {torch.cuda.get_device_name(0)}")
     except RuntimeError as e:
