@@ -15,12 +15,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import time
 from pathlib import Path
 from typing import Dict, List
 
 from dataset.load_dataset import load_dataset_split
-from vllm import LLM, SamplingParams
+from vllm_client import VLLMClient, setup_huggingface_cache
 
 # Model configurations
 MODELS: Dict[str, str] = {
@@ -31,12 +32,7 @@ MODELS: Dict[str, str] = {
 
 LANGUAGES = ("en", "hi", "bn")
 
-# Chat formatting templates per model
-CHAT_TEMPLATES = {
-    "llama3.1-8b": "<|begin_of_text|><|start_header_id|>user<|end_header_id|>\n\n{instruction}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n",
-    "qwen2.5-7b": "<|im_start|>user\n{instruction}<|im_end|>\n<|im_start|>assistant\n",
-    "gemma2-9b": "<start_of_turn>user\n{instruction}<end_of_turn>\n<start_of_turn>model\n",
-}
+
 
 
 def parse_args() -> argparse.Namespace:
@@ -90,13 +86,18 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Overwrite existing completion files",
     )
+    parser.add_argument(
+        "--download-dir",
+        type=str,
+        default=None,
+        help="Directory for HuggingFace cache (default: ~/.cache/huggingface/transformers)",
+    )
     return parser.parse_args()
 
 
-def format_prompt(model_key: str, instruction: str) -> str:
-    """Format instruction as a chat prompt for the model."""
-    template = CHAT_TEMPLATES.get(model_key, "")
-    return template.format(instruction=instruction)
+# We use the raw instruction text as the prompt for generation.
+# Chat-specific templates were removed to simplify generation and avoid
+# model-specific marker handling in this baseline script.
 
 
 def generate_completions_vllm(
@@ -105,8 +106,9 @@ def generate_completions_vllm(
     lang: str,
     dataset: List[Dict],
     batch_size: int,
-    max_tokens: int,
+    max_new_tokens: int,
     tensor_parallel_size: int,
+    download_dir: str = None,
 ) -> tuple[List[Dict], float]:
     """Generate completions using vLLM for a model/language pair.
     
@@ -115,39 +117,36 @@ def generate_completions_vllm(
     print(f"\n    [vLLM] Loading model: {model_path}...")
     load_start = time.time()
     
-    llm = LLM(
-        model=model_path,
-        dtype="bfloat16",
-        max_model_len=2048,
-        gpu_memory_utilization=0.90,
-        trust_remote_code=True,
-        tensor_parallel_size=tensor_parallel_size,
+    # Initialize vLLM client with modular setup
+    client = VLLMClient(
+        model_name=model_path,
+        num_gpus=tensor_parallel_size,
+        download_dir=download_dir,
+        offline=os.getenv("HF_HUB_OFFLINE") == "1",
     )
     
     load_time = time.time() - load_start
     print(f"    ✓ Model loaded in {load_time:.1f}s")
     
-    # Format prompts
+    # Format prompts (use raw instruction text)
     print(f"    Formatting {len(dataset)} prompts...")
-    prompts = [format_prompt(model_key, item["instruction"]) for item in dataset]
-    
-    # Set generation params
-    sampling_params = SamplingParams(
-        temperature=1.0,
-        top_p=1.0,
-        max_tokens=max_tokens,
-    )
+    prompts = [item["instruction"] for item in dataset]
     
     # Generate with vLLM
-    print(f"    Generating with batch_size={batch_size}, max_tokens={max_tokens}...")
+    print(f"    Generating with batch_size={batch_size}, max_tokens={max_new_tokens}...")
     gen_start = time.time()
-    outputs = llm.generate(prompts, sampling_params, use_tqdm=True)
+    responses = client.generate_responses(
+        prompts=prompts,
+        temperature=1.0,
+        top_p=1.0,
+        max_tokens=max_new_tokens,
+        use_tqdm=True,
+    )
     gen_time = time.time() - gen_start
     
     # Extract responses
     completions = []
-    for i, output in enumerate(outputs):
-        response_text = output.outputs[0].text.strip()
+    for i, response_text in enumerate(responses):
         completions.append({
             "instruction": dataset[i]["instruction"],
             "response": response_text,
@@ -160,7 +159,7 @@ def generate_completions_vllm(
     print(f"      (~{gen_time/len(completions):.2f}s per sample)")
     
     # Cleanup
-    del llm
+    del client
     
     return completions, elapsed
 
@@ -175,6 +174,7 @@ def generate_for_pair(
     max_tokens: int,
     tensor_parallel_size: int,
     overwrite: bool,
+    download_dir: str = None,
 ) -> bool:
     """Generate and save completions for a model/language pair.
     
@@ -195,8 +195,9 @@ def generate_for_pair(
             lang=lang,
             dataset=dataset,
             batch_size=batch_size,
-            max_tokens=max_tokens,
+            max_new_tokens=max_tokens,
             tensor_parallel_size=tensor_parallel_size,
+            download_dir=download_dir,
         )
         
         # Save completions
@@ -273,6 +274,7 @@ def main() -> None:
                 max_tokens=args.max_tokens,
                 tensor_parallel_size=args.tensor_parallel_size,
                 overwrite=args.overwrite,
+                download_dir=args.download_dir,
             )
             
             if success:

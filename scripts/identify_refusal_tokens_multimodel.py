@@ -35,6 +35,7 @@ try:
 except ImportError:
     print("⚠️  python-dotenv not installed, skipping .env loading")
 
+<<<<<<< Updated upstream
 # # Load HF_TOKEN from environment
 # hf_token = os.getenv('HF_TOKEN')
 # print(hf_token)
@@ -43,6 +44,18 @@ except ImportError:
 #     print(f"✅ Authenticated with HuggingFace using HF_TOKEN from environment")
 # else:
 #     print("⚠️  HF_TOKEN not found in environment.")
+=======
+# Load HF_TOKEN from environment
+hf_token = os.getenv('HF_TOKEN')
+offline_mode = os.getenv('HF_HUB_OFFLINE') == '1' or os.getenv('TRANSFORMERS_OFFLINE') == '1'
+if hf_token and not offline_mode:
+    login(token=hf_token)
+    print(f"✅ Authenticated with HuggingFace using HF_TOKEN from environment")
+elif offline_mode:
+    print("⚠️  Offline mode enabled; skipping Hugging Face login and using cached files only.")
+else:
+    print("⚠️  HF_TOKEN not found in environment.")
+>>>>>>> Stashed changes
 
 # Model configurations
 MODELS = {
@@ -109,11 +122,16 @@ def identify_refusal_tokens_for_model(
     
     print(f"Loading model {model_path}...")
     try:
+        local_only = os.getenv('HF_HUB_OFFLINE') == '1' or os.getenv('TRANSFORMERS_OFFLINE') == '1' or os.getenv('HF_LOCAL_FILES_ONLY') == '1'
         model = AutoModelForCausalLM.from_pretrained(
             model_path,
             torch_dtype=torch.bfloat16,
             device_map="auto",
+<<<<<<< Updated upstream
             # local_files_only=True,
+=======
+            local_files_only=local_only,
+>>>>>>> Stashed changes
         )
         print(f"✅ Model loaded on GPU: {torch.cuda.get_device_name(0)}")
     except RuntimeError as e:

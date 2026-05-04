@@ -1,0 +1,36 @@
+# vLLM Environment Requirements
+# Compatible with: PyTorch 2.3.0, vLLM 0.5.0
+# CUDA: 12.1
+# Use with: conda create -n ds606_vllm python=3.11 -y
+
+# Core ML
+torch==2.3.0
+torchvision==0.18.0
+torchaudio==2.3.0
+
+# vLLM & inference
+vllm==0.5.0
+vllm-flash-attn==2.5.9
+
+# Transformers & utilities
+transformers==4.42.4
+accelerate==0.31.0
+safetensors==0.4.3
+sentencepiece==0.2.0
+tokenizers==0.19.1
+
+# HuggingFace
+huggingface-hub==0.23.3
+datasets==2.19.2
+
+# Data & analysis
+pandas==2.2.2
+numpy==1.24.4
+
+# Utilities
+tqdm==4.66.4
+pyyaml==6.0.1
+python-dotenv==1.0.1
+
+# Optional but recommended
+notebook==7.0.0

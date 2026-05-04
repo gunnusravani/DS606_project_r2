@@ -31,9 +31,12 @@ except ImportError:
 
 # Load HF_TOKEN from environment
 hf_token = os.getenv('HF_TOKEN')
-if hf_token:
+offline_mode = os.getenv('HF_HUB_OFFLINE') == '1' or os.getenv('TRANSFORMERS_OFFLINE') == '1'
+if hf_token and not offline_mode:
     login(token=hf_token)
     print(f"✅ Authenticated with HuggingFace using HF_TOKEN from environment")
+elif offline_mode:
+    print("⚠️  Offline mode enabled; skipping Hugging Face login and using cached files only.")
 else:
     print("⚠️  HF_TOKEN not found in environment. Will attempt to use cached models or prompt for login.")
     print("   If you get authentication errors, please set HF_TOKEN in your .env file or export it:")
