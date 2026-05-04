@@ -126,3 +126,22 @@ def get_activation_addition_input_pre_hook(vector: Float[Tensor, "d_model"], coe
         else:
             return activation
     return hook_fn
+
+def get_activation_subtraction_input_pre_hook(vector: Float[Tensor, "d_model"], coeff: Float[Tensor, ""]):
+    """Subtract a scaled vector from activations (opposite of addition)."""
+    def hook_fn(module, input):
+        nonlocal vector
+
+        if isinstance(input, tuple):
+            activation: Float[Tensor, "batch_size seq_len d_model"] = input[0]
+        else:
+            activation: Float[Tensor, "batch_size seq_len d_model"] = input
+
+        vector = vector.to(activation)
+        activation -= coeff * vector
+
+        if isinstance(input, tuple):
+            return (activation, *input[1:])
+        else:
+            return activation
+    return hook_fn

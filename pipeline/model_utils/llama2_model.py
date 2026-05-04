@@ -23,6 +23,20 @@ LLAMA2_CHAT_TEMPLATE_WITH_SYSTEM = "[INST] <<SYS>>\n{system_prompt}\n<</SYS>>\n\
 
 LLAMA2_REFUSAL_TOKS = [306] # 'I'
 
+REFUSAL_TOKENS_LANG = {
+    'en': [306], # ['I']
+    'zh': [37046], #'我'
+    'de': [41469], # 'Ich'
+    'th': [104365], # 'ฉ'
+    'yi': [59610],
+    'yo': [40],
+    'ru': [86491],
+    'ko': [101464],
+    'ja': [122571],
+    'hi': [84310, 87244, 145420, 145535, 145799, 146378, 146399, 146575, 147181, 149524],  # Hindi Devanagari characters
+    'bn': [72258, 146026, 146775, 147271, 148014, 148204, 148868, 149525, 150293],  # Bengali characters
+}
+
 def format_instruction_llama2_chat(
     instruction: str,
     output: str=None,
@@ -121,8 +135,8 @@ class Llama2Model(ModelBase):
     def _get_eoi_toks(self):
         return self.tokenizer.encode(LLAMA2_CHAT_TEMPLATE.split("{instruction}")[-1], add_special_tokens=False)
 
-    def _get_refusal_toks(self):
-        return LLAMA2_REFUSAL_TOKS
+    def _get_refusal_toks(self, lang='en'):
+        return REFUSAL_TOKENS_LANG.get(lang, REFUSAL_TOKENS_LANG['en'])
 
     def _get_model_block_modules(self):
         return self.model.model.layers

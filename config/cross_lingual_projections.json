@@ -1,0 +1,46 @@
+{
+  "projections": {
+    "same_lang_hi": {
+      "description": "Hindi refusal vector applied to Hindi generation",
+      "source_lang": "hi",
+      "target_lang": "hi",
+      "type": "same"
+    },
+    "same_lang_bn": {
+      "description": "Bengali refusal vector applied to Bengali generation",
+      "source_lang": "bn",
+      "target_lang": "bn",
+      "type": "same"
+    },
+    "cross_hi_to_bn": {
+      "description": "Hindi refusal vector applied to Bengali generation (cross-lingual transfer)",
+      "source_lang": "hi",
+      "target_lang": "bn",
+      "type": "cross"
+    },
+    "cross_bn_to_hi": {
+      "description": "Bengali refusal vector applied to Hindi generation (cross-lingual transfer)",
+      "source_lang": "bn",
+      "target_lang": "hi",
+      "type": "cross"
+    }
+  },
+  "operations": {
+    "add": {
+      "description": "Add refusal vector (activation += coeff * vector)",
+      "hook_fn": "get_activation_addition_input_pre_hook",
+      "coeff": 1.0
+    },
+    "subtract": {
+      "description": "Subtract refusal vector (activation -= coeff * vector)",
+      "hook_fn": "get_activation_subtraction_input_pre_hook",
+      "coeff": 1.0
+    }
+  },
+  "models": [
+    "llama3.1-8b",
+    "qwen2.5-7b",
+    "gemma2-9b"
+  ],
+  "notes": "Cross-lingual projections test whether refusal vectors learned from one language transfer to another language"
+}

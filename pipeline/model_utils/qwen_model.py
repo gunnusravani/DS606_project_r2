@@ -31,6 +31,20 @@ QWEN_CHAT_TEMPLATE = """<|im_start|>user
 
 QWEN_REFUSAL_TOKS = [40, 2121] # ['I', 'As']
 
+REFUSAL_TOKENS_LANG = {
+    'en': [40, 2121], # ['I', 'As']
+    'zh': [35946], #'我',
+    'de': [17360, 40369], # 'Es'
+    'th': [126331, 124430], # 'ขอ','ฉ'
+    'yi': [129613],
+    'yo': [25612],
+    'ja': [127748, 128976],
+    'ru': [85391, 30174],
+    'ko': [132759],
+    'hi': [84310, 87244, 145420, 145535, 145799, 146378, 146399, 146575, 147181, 149524],  # Hindi Devanagari characters
+    'bn': [72258, 146026, 146775, 147271, 148014, 148204, 148868, 149525, 150293],  # Bengali characters
+}
+
 def format_instruction_qwen_chat(
     instruction: str,
     output: str=None,
@@ -137,8 +151,8 @@ class QwenModel(ModelBase):
     def _get_eoi_toks(self):
         return self.tokenizer.encode(QWEN_CHAT_TEMPLATE.split("{instruction}")[-1])
 
-    def _get_refusal_toks(self):
-        return QWEN_REFUSAL_TOKS
+    def _get_refusal_toks(self, lang='en'):
+        return REFUSAL_TOKENS_LANG.get(lang, REFUSAL_TOKENS_LANG['en'])
 
     def _get_model_block_modules(self):
         return self.model.transformer.h
