@@ -32,11 +32,10 @@ echo "=========================================="
 echo "Time: $(date)"
 echo ""
 echo "Pipeline Steps:"
-echo "  1. Generate responses (Instruct models)"
-echo "  2. Translate to English (GoogleTranslator for Hi/Bn)"
-echo "  3. Classify with Gemma-3-27B-IT"
-echo "  4. Classify with WildGuard"
-echo "  5. Compare results"
+echo "  1. Load or generate completions for English, Hindi, and Bengali"
+echo "  2. Classify with Gemma-3-27B-it"
+echo "  3. Classify with WildGuard"
+echo "  4. Compare results"
 echo ""
 echo "Base Models:"
 echo "  - Llama3.1-8B-Instruct"
@@ -48,19 +47,22 @@ echo ""
 
 # Install dependencies
 echo "Installing dependencies..."
-pip install -q deep-translator transformers torch
+# Remove incompatible torchvision if present
+pip uninstall -q -y torchvision || true
+# Install compatible PyTorch and dependencies (without unnecessary torchvision)
+pip install -q --upgrade torch==2.4.0
+pip install -q deep-translator "transformers>=4.45.0" accelerate
 
 echo "Starting evaluation..."
 echo "=========================================="
 echo ""
 
-python scripts/evaluate_models_wildguard.py
+python scripts/evaluate_hi_bn_en_asr.py
 
 if [ $? -eq 0 ]; then
     echo ""
     echo "✓ Evaluation completed successfully!"
-    echo "Results saved to: output/asr_comprehensive_evaluation.json"
-    echo "Responses saved to: output/responses/"
+    echo "Results saved to: output/asr_hi_bn_en_step1/"
 else
     echo ""
     echo "✗ Evaluation FAILED!"
