@@ -91,48 +91,74 @@ def test_generation_for_pair(
         # Load dataset
         dataset = load_dataset_split(harmtype="harmful", split="test", lang=lang)
         dataset = dataset[:sample_size]
-        print(f"✓ Loaded {len(dataset)} test samples for {lang.upper()}")
+
+
+        print(f"  ✓ Loaded {len(dataset)} test samples")
+        if dataset:
+            print(f"    First instruction: {dataset[0].get('instruction', 'N/A')[:80]}...")
 
         # Load model and generate
-        print(f"Loading model: {model_path}...")
+        print(f"\n[MODEL] Loading model: {model_path}...")
+        import time
+        start_load = time.time()
         model_base = construct_model_base(model_path, lang)
-        print(f"✓ Model loaded")
+        load_time = time.time() - start_load
+        print(f"  ✓ Model loaded in {load_time:.1f}s")
 
-        print(f"Generating {len(dataset)} completions (batch_size={batch_size})...")
+        print(f"\n[GENERATE] Generating {len(dataset)} completions...")
+        print(f"  • Batch size: {batch_size}")
+        print(f"  • Max new tokens: {max_new_tokens}")
+        print(f"  • Translation: {'Yes' if lang != 'en' else 'No'}")
+        start_gen = time.time()
         completions = model_base.generate_completions(
             dataset=dataset,
             batch_size=batch_size,
             max_new_tokens=max_new_tokens,
             translation=(lang != "en"),
         )
-        print(f"✓ Generated {len(completions)} completions")
+        gen_time = time.time() - start_gen
+        print(f"  ✓ Generated {len(completions)} completions in {gen_time:.1f}s")
+
+
 
         # Inspect first completion
+        print(f"\n[INSPECT] Checking completion format...")
         if completions:
             first = completions[0]
-            print(f"\n  First completion keys: {list(first.keys())}")
-            print(f"  Instruction: {first.get('instruction', 'N/A')[:80]}...")
-            print(f"  Response length: {len(first.get('response', ''))} chars")
+            print(f"  • Completion keys: {list(first.keys())}")
+            print(f"  • Instruction: {first.get('instruction', 'N/A')[:80]}...")
+            print(f"  • Response length: {len(first.get('response', ''))} chars")
+            
+            resp = first.get('response', '')
+            if resp:
+                print(f"    Response preview: {resp[:120]}...")
+            
             if first.get("response_translated"):
-                print(f"  Response (translated) length: {len(first.get('response_translated', ''))} chars")
+                trans = first.get("response_translated", "")
+                print(f"  • Response (translated) length: {len(trans)} chars")
+                if trans:
+                    print(f"    Translated preview: {trans[:120]}...")
                 print(f"  ✓ response_translated field present")
             else:
-                print(f"  ✗ response_translated field missing (expected for {lang})")
+                print(f"  {'✗' if lang != 'en' else '✓'} response_translated field {'missing (expected for ' + lang + ')' if lang != 'en' else 'not needed for EN'}")
 
         # Save to output
+        print(f"\n[SAVE] Writing {len(completions)} completions to output...")
         out_dir = Path(output_dir) / model_name / lang
         out_dir.mkdir(parents=True, exist_ok=True)
         out_file = out_dir / "smoke_test_sample.json"
         with open(out_file, "w") as f:
             json.dump(completions, f, indent=2)
-        print(f"✓ Saved to: {out_file}")
+        print(f"  ✓ Saved to: {out_file}")
+        print(f"  File size: {out_file.stat().st_size / 1024:.1f} KB")
 
         # Clean up model
+        print(f"\n[CLEANUP] Cleaning up model...")
         try:
             model_base.del_model()
         except Exception:
             pass
-        print(f"✓ Model cleaned up")
+        print(f"  ✓ Model cleaned up")
 
     except Exception as e:
         print(f"✗ Error: {e}")

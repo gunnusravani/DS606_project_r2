@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 import pandas as pd
+import time
 
 from dataset.load_dataset import load_dataset_split
 from evaluators.gemma_3 import create_gemma_3_evaluator
@@ -167,11 +168,52 @@ def evaluate_model_language_pairs(args: argparse.Namespace) -> Tuple[Dict, List[
                 "unsafe_count": wildguard_unsafe_count,
                 "asr": wildguard_unsafe_rate * 100,
                 "source_path": str(source_path) if source_path else None,
-            }
+                import time
+                total_start = time.time()
+                print(f"\n{'='*70}")
+                print(f"EVALUATION: WildGuard & Gemma-3-27B-it (Zero-shot)")
+                print(f"{'='*70}\n")
+
+                pair_count = 0
+                for model_name, model_path in MODELS.items():
+                    print(f"\n[MODEL] {model_name.upper()}")
+                    print(f"  Path: {model_path}")
+                    results["wildguard"][model_name] = {}
+                    results["gemma_3_27b_it"][model_name] = {}
             results["gemma_3_27b_it"][model_name][lang] = {
+                    for lang_idx, lang in enumerate(LANGUAGES, 1):
+                        pair_count += 1
+                        print(f"\n  [{lang_idx}/3] Language: {lang.upper()}")
+            
+                        pair_start = time.time()
+                        completions, source_path = resolve_completion_set(model_name, model_path, lang, args)
+                        if not completions:
+                            print(f"      ✗ Skipping - no completion file and generation disabled")
+                            continue
                 "total": len(completions),
+                        response_field = pick_response_field(completions[0])
+                        print(f"      Loaded {len(completions)} completions (field: '{response_field}')")
+                        print(f"      Source: {source_path if source_path else 'discovered'}")
                 "unsafe_count": gemma3_unsafe_count,
+                        print(f"      Evaluating with WildGuard...")
+                        wg_start = time.time()
+                        wildguard_eval = wildguard.evaluate_all(completions=[dict(item) for item in completions], logger=None, cfg=type("Cfg", (), {"lang": lang})())
+                        wg_time = time.time() - wg_start
+                        wildguard_unsafe_count = sum(int(item.get("wildguard", {}).get("response_harmful", 0)) for item in wildguard_eval)
+                        wildguard_unsafe_rate = wildguard_unsafe_count / len(wildguard_eval) if wildguard_eval else 0.0
+                        print(f"        ✓ WildGuard: {wildguard_unsafe_rate*100:.1f}% ASR ({wg_time:.1f}s)")
                 "asr": gemma3_unsafe_rate * 100,
+                        print(f"      Evaluating with Gemma-3-27B-it...")
+                        g3_start = time.time()
+                        gemma3_eval = gemma3.evaluate_completions([dict(item) for item in completions], use_field=response_field)
+                        g3_time = time.time() - g3_start
+                        gemma3_unsafe_rate = gemma3_eval["gemma_3_27b_it_unsafe_rate"]
+                        gemma3_unsafe_count = sum(item.get("gemma_3_27b_it", {}).get("is_unsafe", 0) for item in gemma3_eval["completions"])
+                        print(f"        ✓ Gemma-3: {gemma3_unsafe_rate*100:.1f}% ASR ({g3_time:.1f}s)")
+            
+                        pair_elapsed = time.time() - pair_start
+                        print(f"      Pair time: {pair_elapsed:.1f}s")
+
                 "source_path": str(source_path) if source_path else None,
             }
 
@@ -220,7 +262,24 @@ def main() -> None:
         print(df.pivot_table(values="ASR (%)", index=["Model", "Language"], columns="Evaluator").to_string())
     print(f"\nSaved JSON: {results_path}")
     print(f"Saved CSV:  {summary_path}")
-
+    total_time = time.time() - total_start
+    
+    print(f"\n{'='*70}")
+    print(f"✓ EVALUATION COMPLETE!")
+    print(f"  Total time: {total_time/60:.1f} minutes ({total_time:.0f}s)")
+    print(f"{'='*70}\n")
+    
+    print(f"{'='*70}")
+    print(f"ASR RESULTS SUMMARY")
+    print(f"{'='*70}")
+    if not df.empty:
+        pivot = df.pivot_table(values="ASR (%)", index=["Model", "Language"], columns="Evaluator")
+        print(pivot.to_string())
+    print(f"{'='*70}\n")
+    
+    print(f"📊 Results saved to:")
+    print(f"   JSON: {results_path}")
+    print(f"   CSV:  {summary_path}\n")
 
 if __name__ == "__main__":
     main()

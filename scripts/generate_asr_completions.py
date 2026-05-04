@@ -52,19 +52,37 @@ def generate_for_pair(model_name: str, model_path: str, lang: str, out_dir: Path
         print(f"Skipping existing: {dest_file} (use --overwrite to replace)")
         return
 
-    print(f"Generating: {model_name} / {lang.upper()} -> {dest_file}")
+    import time
+    print(f"\n[GEN] {model_name.upper()} / {lang.upper()}")
+    print(f"     Output: {dest_file}")
+    
     model_base = construct_model_base(model_path, lang)
     try:
+        print(f"     Loading dataset...")
         dataset = _select_dataset(lang, sample_size=sample_size)
+        print(f"     ✓ Loaded {len(dataset)} samples")
+        
+        print(f"     Generating responses...")
+        print(f"     • Batch size: {batch_size}")
+        print(f"     • Max tokens: {max_new_tokens}")
+        print(f"     • Translation: {'Yes' if lang != 'en' else 'No'}")
+        
+        start_time = time.time()
         completions = model_base.generate_completions(
             dataset=dataset,
             batch_size=batch_size,
             max_new_tokens=max_new_tokens,
             translation=(lang != "en"),
         )
+        elapsed = time.time() - start_time
+        
+        print(f"     ✓ Generated {len(completions)} completions in {elapsed:.1f}s ({elapsed/len(completions):.2f}s per sample)")
+        
+        print(f"     Writing to disk...")
         with open(dest_file, "w") as f:
             json.dump(completions, f, indent=2)
-        print(f"Saved {len(completions)} completions to {dest_file}")
+        file_size_mb = dest_file.stat().st_size / (1024 * 1024)
+        print(f"     ✓ Saved {len(completions)} completions ({file_size_mb:.1f} MB)")
     finally:
         try:
             model_base.del_model()
@@ -99,7 +117,47 @@ def main() -> None:
                 sample_size=args.sample_size,
                 overwrite=args.overwrite,
             )
+    import time
+    total_start = time.time()
+    
+    print(f"\n{'='*70}")
+    print(f"FULL GENERATION: {len(requested)} models × {len(langs)} languages")
+    print(f"{'='*70}")
+    print(f"Output directory: {out_dir}")
+    print(f"Batch size: {args.batch_size} | Max tokens: {args.max_new_tokens}")
+    print(f"{'='*70}\n")
 
+    completed_pairs = 0
+    total_pairs = len(requested) * len(langs)
+    
+    for m in requested:
+        if m not in MODELS:
+            print(f"✗ Unknown model key: {m} - skipping")
+            continue
+        for lang in langs:
+            if lang not in LANGUAGES:
+                print(f"✗ Unknown language: {lang} - skipping")
+                continue
+            completed_pairs += 1
+            print(f"\n[{completed_pairs}/{total_pairs}] ", end="")
+            generate_for_pair(
+                model_name=m,
+                model_path=MODELS[m],
+                lang=lang,
+                out_dir=out_dir,
+                batch_size=args.batch_size,
+                max_new_tokens=args.max_new_tokens,
+                sample_size=args.sample_size,
+                overwrite=args.overwrite,
+            )
+    
+    total_time = time.time() - total_start
+    print(f"\n{'='*70}")
+    print(f"✓ GENERATION COMPLETE!")
+    print(f"  Completed: {completed_pairs}/{total_pairs} model-language pairs")
+    print(f"  Total time: {total_time/60:.1f} minutes ({total_time:.0f}s)")
+    print(f"  Output dir: {out_dir}")
+    print(f"{'='*70}\n")
 
 if __name__ == "__main__":
     main()
