@@ -19,7 +19,24 @@ conda activate ds606
 
 # Ensure required packages are installed
 echo "Verifying required packages..."
-pip install --upgrade accelerate>=0.28.0 transformers>=4.40.0 torch>=2.0.0 2>&1 | tail -5
+python - <<'PY'
+import importlib.util
+pkgs = ["accelerate", "transformers", "torch"]
+missing = [pkg for pkg in pkgs if importlib.util.find_spec(pkg) is None]
+print("Missing packages:", missing if missing else "none")
+PY
+
+if ! python - <<'PY'
+import importlib.util
+required = ["accelerate", "transformers", "torch"]
+raise SystemExit(0 if all(importlib.util.find_spec(pkg) is not None for pkg in required) else 1)
+PY
+then
+    echo "Installing missing/required packages with visible progress..."
+    python -m pip install --upgrade accelerate transformers torch
+else
+    echo "All required packages already available."
+fi
 
 # Set Python path
 export PYTHONPATH=/users/student/prjstu/sravani.gunnu/DS606_project_r2:$PYTHONPATH
