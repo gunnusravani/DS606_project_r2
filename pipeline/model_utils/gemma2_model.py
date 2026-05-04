@@ -104,6 +104,7 @@ class Gemma2Model(ModelBase):
             dtype=dtype,
             device_map="cuda",
             attn_implementation="eager",
+            local_files_only=True,
         ).eval()
 
         model.requires_grad_(False) 

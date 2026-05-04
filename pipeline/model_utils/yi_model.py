@@ -110,6 +110,7 @@ class YiModel(ModelBase):
             model_path,
             dtype=dtype,
             device_map="auto",
+            local_files_only=True,
         ).eval()
 
         model.requires_grad_(False) 

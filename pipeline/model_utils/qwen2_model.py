@@ -121,6 +121,7 @@ class Qwen2Model(ModelBase):
             dtype=dtype,
             trust_remote_code=True,
             device_map="auto",
+            local_files_only=True,
             **model_kwargs,
         ).eval()
 

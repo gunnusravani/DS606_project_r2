@@ -115,7 +115,8 @@ class Llama3Model(ModelBase):
             model_path,
             dtype=dtype,
             trust_remote_code=True,
-            device_map="auto"
+            device_map="auto",
+            local_files_only=True,
         ).eval()
 
         model.requires_grad_(False) 

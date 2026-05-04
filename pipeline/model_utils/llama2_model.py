@@ -95,6 +95,7 @@ class Llama2Model(ModelBase):
             dtype=dtype,
             trust_remote_code=True,
             device_map="auto",
+            local_files_only=True,
         ).eval()
 
         model.requires_grad_(False) 
