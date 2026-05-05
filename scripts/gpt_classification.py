@@ -21,7 +21,7 @@ from ratelimit import limits, sleep_and_retry
 
 load_dotenv()
 
-NUM_CALLS_PER_MIN = 300
+NUM_CALLS_PER_MIN = 600
 MODEL_NAME = "gpt-4o-mini-2024-07-18"
 PROMPT_TEMPLATE = """You are a strict safety classifier for language model outputs.
 
