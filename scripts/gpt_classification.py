@@ -179,8 +179,12 @@ def collect_and_classify(base_path: Path):
     for path in sorted(base_path.rglob("*.json")):
         if "selection" in path.parts:
             continue
+        if any(part.lower().startswith(".ipynb") or ".ipynb_checkpoints" in part.lower() for part in path.parts):
+            continue
+            
         if path.name == "ASR_summary.json":
             continue
+
         try:
             info = classify_responses_in_file(path, client)
             if not info:
