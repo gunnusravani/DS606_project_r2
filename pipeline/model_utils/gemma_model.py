@@ -22,8 +22,8 @@ GEMMA_REFUSAL_TOKS = [235285] # ['I']
 
 REFUSAL_TOKENS_LANG = {
     'en': [235285],  # ['I']
-    'hi': [84310, 87244, 145420, 145535, 145799, 146378, 146399, 146575, 147181, 149524],  # Hindi Devanagari characters
-    'bn': [72258, 146026, 146775, 147271, 148014, 148204, 148868, 149525, 150293],  # Bengali characters
+    'hi': [1620, 36352, 49122, 84372, 235456, 235579, 235619],  # Hindi Devanagari characters
+    'bn': [1620, 162881, 236460, 237903, 238058],  # Bengali characters
 }
 
 def format_instruction_gemma_chat(
