@@ -3,7 +3,7 @@ Generate completions with refusal vectors: Addition, Subtraction, and Cross-ling
 
 Supports:
   - Operations: add (+coeff * vector), subtract (-coeff * vector)
-  - Projections: same-language, cross-lingual (hi→bn, bn→hi)
+    - Projections: same-language, cross-lingual (en→hi, en→bn, hi→bn, bn→hi)
   - Models: llama3.1-8b, qwen2.5-7b, gemma2-9b
 
 Output structure:
@@ -51,6 +51,8 @@ OPERATIONS = ("add", "subtract")
 # Map projection names to (source_lang, target_lang, operation)
 PROJECTIONS = {
     "same_lang": {"src_lang": None, "tgt_lang": None, "type": "same"},
+    "cross_en_to_hi": {"src_lang": "en", "tgt_lang": "hi", "type": "cross"},
+    "cross_en_to_bn": {"src_lang": "en", "tgt_lang": "bn", "type": "cross"},
     "cross_hi_to_bn": {"src_lang": "hi", "tgt_lang": "bn", "type": "cross"},
     "cross_bn_to_hi": {"src_lang": "bn", "tgt_lang": "hi", "type": "cross"},
 }
@@ -82,7 +84,7 @@ def parse_args() -> argparse.Namespace:
         "--projections",
         type=str,
         default="same_lang",
-        help="Comma-separated projections (same_lang, cross_hi_to_bn, cross_bn_to_hi)",
+        help="Comma-separated projections (same_lang, cross_en_to_hi, cross_en_to_bn, cross_hi_to_bn, cross_bn_to_hi)",
     )
     parser.add_argument(
         "--output-dir",

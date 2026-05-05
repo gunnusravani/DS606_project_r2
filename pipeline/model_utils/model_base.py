@@ -85,10 +85,12 @@ class ModelBase(ABC):
                 generation_toks = generation_toks[:, tokenized_instructions.input_ids.shape[-1]:]
 
                 for generation_idx, generation in enumerate(generation_toks):
+                    response_text = self.tokenizer.decode(generation, skip_special_tokens=True).strip()
                     completions.append({
                         # 'category': categories[i + generation_idx],
                         'instruction': instructions[i + generation_idx],
-                        'response': self.tokenizer.decode(generation, skip_special_tokens=True).strip(),
+                        'response': response_text,
+                        'response_text': response_text,
                         'instruction_en' : instructions_en[i + generation_idx],
                         'generation_tokens': " ".join(map(str, generation.tolist()))
                     })

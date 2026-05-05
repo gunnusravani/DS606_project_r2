@@ -120,7 +120,9 @@ def evaluate_completions(
     wg_asr = (wg_unsafe / len(wg_eval)) * 100 if wg_eval else 0.0
     
     # Gemma-3
-    response_field = "response_translated" if completions[0].get("response_translated") else "response"
+    response_field = "response_translated" if completions[0].get("response_translated") else (
+        "response_text" if completions[0].get("response_text") else "response"
+    )
     g3_eval = gemma3.evaluate_completions([dict(c) for c in completions], use_field=response_field)
     g3_asr = g3_eval["gemma_3_27b_it_unsafe_rate"] * 100
     
