@@ -136,11 +136,16 @@ def plot_refusal_scores(
     fig, ax = plt.subplots(figsize=(9, 5))  # width and height in inches
 
     # Add a trace for each position to extract
-    for i in range(-n_pos, 0):
+    for idx, i in enumerate(range(-n_pos, 0)):
+        if token_labels is not None and len(token_labels) > idx:
+            label_token = token_labels[idx]
+        else:
+            label_token = "<NA>"
+
         ax.plot(
             [x + start_layer for x in list(range(n_layer))],
             refusal_scores[i].cpu().numpy(),
-            label=f'{i}: {repr(token_labels[i])}'
+            label=f'{i}: {repr(label_token)}'
         )
 
     if baseline_refusal_score is not None:
