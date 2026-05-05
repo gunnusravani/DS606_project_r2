@@ -2,9 +2,9 @@
 Generate completions with refusal vectors: Addition, Subtraction, and Cross-lingual Projections
 
 Supports:
-  - Operations: add (+coeff * vector), subtract (-coeff * vector)
-    - Projections: same-language, cross-lingual (en→hi, en→bn, hi→bn, bn→hi)
-  - Models: llama3.1-8b, qwen2.5-7b, gemma2-9b
+    - Operations: add (+coeff * vector), subtract (-coeff * vector)
+    - Projections: same-language, cross-lingual (en→en, en→hi, en→bn, hi→bn, bn→hi)
+    - Models: llama3.1-8b, qwen2.5-7b, gemma2-9b
 
 Output structure:
   output/refusal_vectors/<model>/<target_lang>/<operation>/<projection>/completions.json
@@ -45,12 +45,14 @@ MODELS: Dict[str, str] = {
     "gemma2-9b": "google/gemma-2-9b-it",
 }
 
-LANGUAGES = ("hi", "bn")
+LANGUAGES = ("en", "hi", "bn")
 OPERATIONS = ("add", "subtract")
 
 # Map projection names to (source_lang, target_lang, operation)
 PROJECTIONS = {
     "same_lang": {"src_lang": None, "tgt_lang": None, "type": "same"},
+    "cross_en_to_en": {"src_lang": "en", "tgt_lang": "en", "type": "cross"},
+    "eng_to_eng": {"src_lang": "en", "tgt_lang": "en", "type": "cross"},
     "cross_en_to_hi": {"src_lang": "en", "tgt_lang": "hi", "type": "cross"},
     "cross_en_to_bn": {"src_lang": "en", "tgt_lang": "bn", "type": "cross"},
     "cross_hi_to_bn": {"src_lang": "hi", "tgt_lang": "bn", "type": "cross"},
@@ -72,7 +74,7 @@ def parse_args() -> argparse.Namespace:
         "--target-langs",
         type=str,
         default=",".join(LANGUAGES),
-        help="Comma-separated target languages for generation (hi,bn)",
+        help="Comma-separated target languages for generation (en,hi,bn)",
     )
     parser.add_argument(
         "--operations",
@@ -84,7 +86,7 @@ def parse_args() -> argparse.Namespace:
         "--projections",
         type=str,
         default="same_lang",
-        help="Comma-separated projections (same_lang, cross_en_to_hi, cross_en_to_bn, cross_hi_to_bn, cross_bn_to_hi)",
+        help="Comma-separated projections (same_lang, cross_en_to_en, eng_to_eng, cross_en_to_hi, cross_en_to_bn, cross_hi_to_bn, cross_bn_to_hi)",
     )
     parser.add_argument(
         "--output-dir",
@@ -107,7 +109,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--max-new-tokens",
         type=int,
-        default=256,
+        default=512,
         help="Maximum new tokens to generate",
     )
     parser.add_argument(
@@ -291,6 +293,10 @@ def main() -> None:
                     projection = PROJECTIONS.get(projection_name)
                     if not projection:
                         print(f"  ✗ Unknown projection: {projection_name}")
+                        continue
+
+                    # For cross projections, only run combinations that match target language.
+                    if projection["type"] == "cross" and projection["tgt_lang"] != target_lang:
                         continue
                     
                     # Determine source language

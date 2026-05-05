@@ -6,9 +6,15 @@ from jaxtyping import Int, Float
 
 from pipeline.utils.hook_utils import add_hooks
 
+try:
+    from deep_translator import GoogleTranslator
+except Exception:
+    GoogleTranslator = None
+
 class ModelBase(ABC):
     def __init__(self, model_name_or_path: str, lang: str = 'en'):
         self.model_name_or_path = model_name_or_path
+        self.lang = lang
         self.model: AutoModelForCausalLM = self._load_model(model_name_or_path)
         self.tokenizer: AutoTokenizer = self._load_tokenizer(model_name_or_path)
         self.tokenize_instructions_fn = self._get_tokenize_instructions_fn()
@@ -72,6 +78,13 @@ class ModelBase(ABC):
         instructions_en = [x['instruction'] for x in dataset]
         # categories = [x['category'] for x in dataset]
 
+        translator = None
+        if self.lang != 'en' and GoogleTranslator is not None:
+            try:
+                translator = GoogleTranslator(source=self.lang, target='en')
+            except Exception:
+                translator = None
+
         for i in tqdm(range(0, len(dataset), batch_size)):
             tokenized_instructions = self.tokenize_instructions_fn(instructions=instructions[i:i + batch_size], system=system)
 
@@ -86,11 +99,20 @@ class ModelBase(ABC):
 
                 for generation_idx, generation in enumerate(generation_toks):
                     response_text = self.tokenizer.decode(generation, skip_special_tokens=True).strip()
+                    if translator is not None:
+                        try:
+                            response_translated = translator.translate(response_text)
+                        except Exception:
+                            response_translated = response_text
+                    else:
+                        response_translated = response_text
+
                     completions.append({
                         # 'category': categories[i + generation_idx],
                         'instruction': instructions[i + generation_idx],
                         'response': response_text,
                         'response_text': response_text,
+                        'response_translated': response_translated,
                         'instruction_en' : instructions_en[i + generation_idx],
                         'generation_tokens': " ".join(map(str, generation.tolist()))
                     })
