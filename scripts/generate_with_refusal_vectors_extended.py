@@ -28,6 +28,9 @@ from tqdm import tqdm
 
 from dataset.load_dataset import load_dataset_split
 from pipeline.model_utils.model_factory import construct_model_base
+from pipeline.model_utils.llama3_model import REFUSAL_TOKENS_LANG as LLAMA3_TOKENS
+from pipeline.model_utils.qwen2_model import REFUSAL_TOKENS_LANG as QWEN2_TOKENS
+from pipeline.model_utils.gemma2_model import REFUSAL_TOKENS_LANG as GEMMA2_TOKENS
 from pipeline.utils.hook_utils import (
     add_hooks,
     get_activation_addition_input_pre_hook,
@@ -119,13 +122,43 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def get_refusal_tokens_from_models() -> Dict[str, Dict[str, List[int]]]:
+    """Extract refusal tokens directly from model class definitions."""
+    print(f"Loading refusal tokens from model class definitions...")
+    
+    # Map model keys to their token definitions
+    token_map = {
+        "llama3.1-8b": LLAMA3_TOKENS,
+        "qwen2.5-7b": QWEN2_TOKENS,
+        "gemma2-9b": GEMMA2_TOKENS,
+    }
+    
+    refusal_tokens = {}
+    for model_key, tokens_lang in token_map.items():
+        refusal_tokens[model_key] = tokens_lang
+        lang_str = ", ".join(f"{lang}({len(toks)} toks)" for lang, toks in tokens_lang.items())
+        print(f"   {model_key:15} → {lang_str}")
+    
+    return refusal_tokens
+
+
 def load_refusal_tokens(tokens_file: Path) -> Dict[str, Dict[str, List[int]]]:
-    """Load refusal tokens from multimodel JSON file."""
+    """Load refusal tokens from multimodel JSON file (fallback if it exists)."""
+    if not tokens_file.exists():
+        print(f"⚠️  Tokens file not found: {tokens_file}")
+        print(f"   Using refusal tokens from model class definitions instead.\n")
+        return get_refusal_tokens_from_models()
+    
     print(f"Loading refusal tokens from {tokens_file}...")
     with open(tokens_file, 'r') as f:
         data = json.load(f)
     
     tokens = data.get("tokens", {})
+    if not tokens:
+        print(f"⚠️  No tokens found in {tokens_file}")
+        print(f"   Using refusal tokens from model class definitions instead.\n")
+        return get_refusal_tokens_from_models()
+    
     print(f"✅ Loaded tokens for {len(tokens)} models")
     for model_key, langs in tokens.items():
         lang_str = ", ".join(f"{lang}({len(toks)} toks)" for lang, toks in langs.items())
@@ -163,9 +196,14 @@ def generate_with_refusal_vectors(
     
     # Get refusal tokens for source language
     if source_lang not in refusal_tokens.get(model_key, {}):
-        print(f"      ⚠️  No refusal tokens for {model_key}/{source_lang}, using first available")
-        source_tokens = list(refusal_tokens.get(model_key, {}).values())[0]
-        source_lang = list(refusal_tokens.get(model_key, {}).keys())[0]
+        print(f"      ⚠️  No refusal tokens for {model_key}/{source_lang}")
+        available_langs = list(refusal_tokens.get(model_key, {}).keys())
+        if available_langs:
+            source_tokens = refusal_tokens[model_key][available_langs[0]]
+            print(f"      → Using first available: {available_langs[0]}")
+        else:
+            print(f"      ❌ No refusal tokens available for {model_key} at all!")
+            raise ValueError(f"No refusal tokens found for model {model_key}")
     else:
         source_tokens = refusal_tokens[model_key][source_lang]
     
@@ -213,12 +251,7 @@ def main() -> None:
     out_dir = Path(args.output_dir)
     tokens_file = Path(args.tokens_file)
     
-    if not tokens_file.exists():
-        print(f"❌ Tokens file not found: {tokens_file}")
-        print(f"   Run: python scripts/identify_refusal_tokens_multimodel.py")
-        return
-    
-    # Load tokens
+    # Load tokens (with fallback to model class definitions)
     refusal_tokens = load_refusal_tokens(tokens_file)
     
     print(f"\n{'='*80}")
