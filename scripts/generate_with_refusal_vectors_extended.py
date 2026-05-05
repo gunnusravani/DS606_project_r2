@@ -143,28 +143,28 @@ def get_refusal_tokens_from_models() -> Dict[str, Dict[str, List[int]]]:
 
 
 def load_refusal_tokens(tokens_file: Path) -> Dict[str, Dict[str, List[int]]]:
-    """Load refusal tokens from multimodel JSON file (fallback if it exists)."""
-    if not tokens_file.exists():
-        print(f"⚠️  Tokens file not found: {tokens_file}")
-        print(f"   Using refusal tokens from model class definitions instead.\n")
-        return get_refusal_tokens_from_models()
+    """Load refusal tokens from model class definitions (primary).
     
-    print(f"Loading refusal tokens from {tokens_file}...")
-    with open(tokens_file, 'r') as f:
-        data = json.load(f)
+    Falls back to JSON file if model class definitions are incomplete.
+    This ensures we always use the full set of tokens defined in model files.
+    """
+    print(f"Loading refusal tokens from model class definitions (primary)...")
     
-    tokens = data.get("tokens", {})
-    if not tokens:
-        print(f"⚠️  No tokens found in {tokens_file}")
-        print(f"   Using refusal tokens from model class definitions instead.\n")
-        return get_refusal_tokens_from_models()
+    # Always use model class tokens as primary source
+    refusal_tokens = get_refusal_tokens_from_models()
     
-    print(f"✅ Loaded tokens for {len(tokens)} models")
-    for model_key, langs in tokens.items():
-        lang_str = ", ".join(f"{lang}({len(toks)} toks)" for lang, toks in langs.items())
-        print(f"   {model_key:15} → {lang_str}")
+    # Optionally augment with JSON if it exists and has more data
+    if tokens_file.exists():
+        try:
+            with open(tokens_file, 'r') as f:
+                data = json.load(f)
+            json_tokens = data.get("tokens", {})
+            if json_tokens:
+                print(f"⚠️  JSON file also exists but using model class tokens (more complete)")
+        except Exception as e:
+            print(f"⚠️  Could not load JSON: {e}, continuing with model class tokens")
     
-    return tokens
+    return refusal_tokens
 
 
 def get_hook_fn(operation: str):
@@ -214,14 +214,14 @@ def generate_with_refusal_vectors(
     print(f"      Using refusal token {refusal_token_id} from {source_lang}")
     print(f"      Operation: {operation} | Projection: {projection_name}")
     
-    # Setup hook
+    # Setup hook on MLP layer (more stable than attention)
     hook_fn_class = get_hook_fn(operation)
     hook_fn = hook_fn_class(vector=refusal_vector, coeff=1.0)
     
-    # Get attention layer 10 (middle layer)
+    # Apply to MLP layer 10 (middle layer) for better stability
     layer = 10
-    attn_module = model_base.model_attn_modules[layer]
-    fwd_pre_hooks = [(attn_module, hook_fn)]
+    mlp_module = model_base.model_mlp_modules[layer]
+    fwd_pre_hooks = [(mlp_module, hook_fn)]
     
     # Generate
     print(f"      Generating {len(dataset)} completions (batch_size={batch_size})...")

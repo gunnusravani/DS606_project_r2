@@ -113,18 +113,27 @@ def get_activation_addition_input_pre_hook(vector: Float[Tensor, "d_model"], coe
     def hook_fn(module, input):
         nonlocal vector
 
-        if isinstance(input, tuple):
+        # Handle both tuple and tensor inputs robustly
+        if isinstance(input, tuple) and len(input) > 0:
             activation: Float[Tensor, "batch_size seq_len d_model"] = input[0]
+        elif isinstance(input, tuple):
+            # Empty tuple, nothing to modify
+            return input
         else:
             activation: Float[Tensor, "batch_size seq_len d_model"] = input
 
-        vector = vector.to(activation)
-        activation += coeff * vector
+        try:
+            vector = vector.to(activation.device).to(activation.dtype)
+            activation += coeff * vector
 
-        if isinstance(input, tuple):
-            return (activation, *input[1:])
-        else:
-            return activation
+            if isinstance(input, tuple):
+                return (activation, *input[1:])
+            else:
+                return activation
+        except Exception as e:
+            # Fail gracefully if hook modulation fails
+            print(f"⚠️  Hook modification failed: {e}, returning original input")
+            return input
     return hook_fn
 
 def get_activation_subtraction_input_pre_hook(vector: Float[Tensor, "d_model"], coeff: Float[Tensor, ""]):
@@ -132,16 +141,25 @@ def get_activation_subtraction_input_pre_hook(vector: Float[Tensor, "d_model"], 
     def hook_fn(module, input):
         nonlocal vector
 
-        if isinstance(input, tuple):
+        # Handle both tuple and tensor inputs robustly
+        if isinstance(input, tuple) and len(input) > 0:
             activation: Float[Tensor, "batch_size seq_len d_model"] = input[0]
+        elif isinstance(input, tuple):
+            # Empty tuple, nothing to modify
+            return input
         else:
             activation: Float[Tensor, "batch_size seq_len d_model"] = input
 
-        vector = vector.to(activation)
-        activation -= coeff * vector
+        try:
+            vector = vector.to(activation.device).to(activation.dtype)
+            activation -= coeff * vector
 
-        if isinstance(input, tuple):
-            return (activation, *input[1:])
-        else:
-            return activation
+            if isinstance(input, tuple):
+                return (activation, *input[1:])
+            else:
+                return activation
+        except Exception as e:
+            # Fail gracefully if hook modulation fails
+            print(f"⚠️  Hook modification failed: {e}, returning original input")
+            return input
     return hook_fn
