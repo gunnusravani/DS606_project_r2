@@ -183,14 +183,14 @@ def generate_with_refusal_vectors(
     # Get attention layer 10 (middle layer)
     layer = 10
     attn_module = model_base.model_attn_modules[layer]
-    fwd_hooks = [(attn_module, hook_fn)]
+    fwd_pre_hooks = [(attn_module, hook_fn)]
     
     # Generate
     print(f"      Generating {len(dataset)} completions (batch_size={batch_size})...")
     completions = model_base.generate_completions(
         dataset=dataset,
-        fwd_pre_hooks=[],
-        fwd_hooks=fwd_hooks,
+        fwd_pre_hooks=fwd_pre_hooks,
+        fwd_hooks=[],
         batch_size=batch_size,
         max_new_tokens=max_new_tokens,
         translation=(target_lang != "en"),
