@@ -8,7 +8,6 @@ import json
 import os
 from pathlib import Path
 from transformers import AutoTokenizer, AutoModelForCausalLM
-from huggingface_hub import login
 from typing import Dict, List
 
 # Load environment variables from .env file
@@ -29,18 +28,11 @@ try:
 except ImportError:
     print("⚠️  python-dotenv not installed, skipping .env loading")
 
-# Load HF_TOKEN from environment
-hf_token = os.getenv('HF_TOKEN')
-offline_mode = os.getenv('HF_HUB_OFFLINE') == '1' or os.getenv('TRANSFORMERS_OFFLINE') == '1'
-if hf_token and not offline_mode:
-    login(token=hf_token)
-    print(f"✅ Authenticated with HuggingFace using HF_TOKEN from environment")
-elif offline_mode:
-    print("⚠️  Offline mode enabled; skipping Hugging Face login and using cached files only.")
-else:
-    print("⚠️  HF_TOKEN not found in environment. Will attempt to use cached models or prompt for login.")
-    print("   If you get authentication errors, please set HF_TOKEN in your .env file or export it:")
-    print("   export HF_TOKEN='your_token_here'")
+# Loading models from cached HuggingFace directory (e.g., /janaki/common/huggingface/)
+print(f"ℹ️  Loading models locally from HuggingFace cache (offline mode)")
+print(f"   HF_HUB_OFFLINE={os.getenv('HF_HUB_OFFLINE', '0')}")
+print(f"   TRANSFORMERS_OFFLINE={os.getenv('TRANSFORMERS_OFFLINE', '0')}")
+print(f"   HF_HUB_CACHE={os.getenv('HF_HUB_CACHE', 'default')}")
 
 def format_instruction_qwen_chat(instruction: str, system: str = None) -> str:
     """Format instruction in Qwen chat template format."""
@@ -78,20 +70,21 @@ def identify_refusal_tokens(model_path: str, harmful_prompts_file: str, lang_cod
     Returns:
         List of token IDs that represent refusals in the target language
     """
-    print(f"Loading model {model_path}...")
+    print(f"Loading model {model_path} (local_files_only=True)...")
     
     try:
         model = AutoModelForCausalLM.from_pretrained(
             model_path, 
-            torch_dtype=torch.float16, 
-            device_map="cuda"
+            torch_dtype=torch.bfloat16, 
+            device_map="auto",
+            local_files_only=True,
         )
         print(f"✅ Model loaded on GPU: {torch.cuda.get_device_name(0)}")
     except RuntimeError as e:
         print(f"❌ CUDA error: {e}")
         raise
     
-    tokenizer = AutoTokenizer.from_pretrained(model_path)
+    tokenizer = AutoTokenizer.from_pretrained(model_path, local_files_only=True)
     
     # Set pad token if not set
     if tokenizer.pad_token is None:

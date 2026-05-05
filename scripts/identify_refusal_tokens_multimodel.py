@@ -15,7 +15,7 @@ import json
 import os
 from pathlib import Path
 from transformers import AutoTokenizer, AutoModelForCausalLM
-from huggingface_hub import login
+
 from typing import Dict, List
 
 # Load environment variables from .env file
@@ -120,25 +120,20 @@ def identify_refusal_tokens_for_model(
     print(f"Model: {model_path}")
     print(f"{'='*70}")
     
-    print(f"Loading model {model_path}...")
+    print(f"Loading model {model_path} (local_files_only=True)...")
     try:
-        local_only = os.getenv('HF_HUB_OFFLINE') == '1' or os.getenv('TRANSFORMERS_OFFLINE') == '1' or os.getenv('HF_LOCAL_FILES_ONLY') == '1'
         model = AutoModelForCausalLM.from_pretrained(
             model_path,
             torch_dtype=torch.bfloat16,
             device_map="auto",
-<<<<<<< Updated upstream
-            # local_files_only=True,
-=======
-            local_files_only=local_only,
->>>>>>> Stashed changes
+            local_files_only=True,
         )
         print(f"✅ Model loaded on GPU: {torch.cuda.get_device_name(0)}")
     except RuntimeError as e:
         print(f"❌ CUDA error: {e}")
         raise
     
-    tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
+    tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True, local_files_only=True)
     
     # Set pad token if not set
     if tokenizer.pad_token is None:

@@ -26,7 +26,7 @@ class Gemma3SafetyEvaluator:
         self.dtype = dtype
 
         logger.info("Loading Gemma-3-27B-it safety evaluator...")
-        self.tokenizer = AutoTokenizer.from_pretrained(self.MODEL_ID)
+        self.tokenizer = AutoTokenizer.from_pretrained(self.MODEL_ID, local_files_only=True)
         self.tokenizer.padding_side = "left"
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
@@ -36,12 +36,14 @@ class Gemma3SafetyEvaluator:
                 self.MODEL_ID,
                 torch_dtype=dtype,
                 device_map="auto",
+                local_files_only=True,
             )
         else:
             self.model = AutoModelForCausalLM.from_pretrained(
                 self.MODEL_ID,
                 torch_dtype=dtype,
                 device_map="cpu",
+                local_files_only=True,
             )
 
         self.model.eval()
